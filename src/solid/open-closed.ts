@@ -1,9 +1,13 @@
-import { writeFile } from 'fs'
+import { writeFile } from "fs";
 // Open-Closed Principle
 
 // Single Responsibility Principle generate report
+
+/**
+ * Clase con la unica responsabilidad de tener la lista de clientes a guardar
+ */
 class ClientsData {
-  private _data: Client[]
+  private _data: Client[];
 
   constructor() {
     this._data = [];
@@ -19,14 +23,24 @@ class ClientsData {
   }
 }
 
+/**
+ * To implement the open/closed principle we need to create an interface so our class does not depend on the implementation
+ * and we can easily extend our software without modifying the existing code
+ */
 
+interface IReportDataGenerator {
+  generate(): string;
+}
 
-class ReportGenerator {
-
+/**
+ * Clase con la unica responsabilidad de generar la información para el reporte
+ * Now, our class implements the interface IReportDataGenerator
+ */
+class ReportDataGenerator implements IReportDataGenerator {
   constructor(private _data: ClientsData) {}
 
   generate(): string {
-    let report = '';
+    let report = "";
     this._data.getAll().forEach((client) => {
       report += `Name: ${client.getName()} Address: ${client.getAddress()}\n`;
     });
@@ -34,11 +48,37 @@ class ReportGenerator {
   }
 }
 
+/**
+ * We can create a new class that implements the IReportDataGenerator interface
+ * and add a new feature, generate html report without affecting other classes,
+ * 
+ */
+
+class ReportGeneratorHTML implements IReportDataGenerator {
+  constructor(private _data: ClientsData) {}
+
+  generate(): string {
+    let report = "<html><head><title>Report</title></head><body><table><thead><tr><th>Name</th><th>Address</th></tr></thead><tbody>";
+    this._data.getAll().forEach((client) => {
+      report += `<tr><td>${client.getName()}</td><td>${client.getAddress()}</td></tr>`;
+    });
+    report += "</tbody></table></body></html>";
+    return report;
+  }
+}
+
+/**
+ * Clase con la unica responsabilidad de guardar el archivo, generar el reporte
+ */
 class Report {
-  save(data: string, filepath: string) {
+  save(reportGenerator: IReportDataGenerator , filepath: string) {
     // Save on disk
-    console.log('Guardando archivo...')
-    console.time('Guardando archivo');
+    console.log("Guardando archivo...");
+    console.time("Guardando archivo");
+    
+    // Now our report depends on an abstraction
+    const data = reportGenerator.generate();
+
     writeFile(filepath, data, (err) => {
       if (err) {
         console.error("Guardando el archivo", err);
@@ -49,9 +89,7 @@ class Report {
 }
 
 class Client {
-  constructor(private name: string, private address: string) {
-    
-  } 
+  constructor(private name: string, private address: string) {}
 
   setName(name: string) {
     this.name = name;
@@ -70,16 +108,19 @@ class Client {
   }
 }
 
-
-const client1 = new Client('Client 1', 'Prueba address');
-const client2 = new Client('Client 2', 'Prueba address 2');
+const client1 = new Client("Client 1", "Prueba address");
+const client2 = new Client("Client 2", "Prueba address 2");
 
 const clientData = new ClientsData();
 clientData.add(client1);
 clientData.add(client2);
 
-const reportGenerator = new ReportGenerator(clientData);
-const reportData = reportGenerator.generate();
+// We can use this report generator that generate plain text reports
+const reportGenerator = new ReportDataGenerator(clientData);
+
+// const reportData = reportGenerator.generate();
+const reportGeneratorHTML = new ReportGeneratorHTML(clientData);
 
 const report = new Report();
-report.save(reportData, 'report.txt');
+// Now we have interchangeable reports modes without changing the Report class
+report.save(reportGeneratorHTML, "report.html");
